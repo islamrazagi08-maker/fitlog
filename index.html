@@ -1,0 +1,2475 @@
+<!DOCTYPE html>
+<html lang="ru" class="antialiased">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Дневник тренировок — FitLog</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FitLog" />
+  <link rel="apple-touch-icon" href="./icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 8px -2px rgba(15, 23, 42, 0.04)',
+            'soft-dark': '0 4px 24px -2px rgba(0, 0, 0, 0.4)',
+            'glow-indigo': '0 4px 16px -2px rgba(99, 102, 241, 0.35)',
+            'glow-emerald': '0 4px 16px -2px rgba(16, 185, 129, 0.35)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Плавные микроанимации и улучшенный скролл */
+    :root {
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes checkPop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 16px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
+    }
+
+    .animate-card {
+      animation: fadeSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .animate-check {
+      animation: checkPop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .animate-modal {
+      animation: modalIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .animate-toast {
+      animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    /* Убираем стрелки у числовых инпутов */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    .pb-safe {
+      padding-bottom: calc(0.5rem + var(--safe-bottom));
+    }
+
+    /* Тонкий скроллбар для десктопа */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200 min-h-screen selection:bg-indigo-500/20">
+
+  <!-- Основная обёртка приложения -->
+  <div id="app" class="min-h-screen flex flex-col md:flex-row">
+
+    <!-- Десктопная левая боковая панель (>= 768px) -->
+    <aside class="hidden md:flex md:flex-col md:w-64 lg:w-72 md:fixed md:inset-y-0 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800/80 z-30">
+      <div class="p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-glow-indigo shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 6.5h11M6.5 17.5h11M4 10v4M20 10v4M7 4v16M17 4v16"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h1 class="font-bold text-base tracking-tight truncate">FitLog</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 truncate">Дневник тренировок</p>
+        </div>
+      </div>
+
+      <nav id="desktop-nav" class="flex-1 p-3 space-y-1.5 overflow-y-auto"></nav>
+
+      <!-- Нижняя панель сайдбара с быстрыми действиями -->
+      <div class="p-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+        <button onclick="openTimerPanel()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-sm font-medium transition-colors">
+          <span class="flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M10 2h4"/></svg>
+            <span>Таймер отдыха</span>
+          </span>
+          <span id="sidebar-timer-badge" class="hidden text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500 text-white tabular-nums"></span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button onclick="cycleTheme()" id="desktop-theme-btn" class="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium transition-colors" title="Сменить тему">
+            <span id="desktop-theme-icon"></span>
+            <span id="desktop-theme-label">Системная</span>
+          </button>
+          <button onclick="openSettingsModal()" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors" title="Настройки">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Контентная колонка -->
+    <div class="flex-1 flex flex-col md:pl-64 lg:pl-72 min-w-0">
+
+      <!-- Мобильная шапка (< 768px) -->
+      <header class="md:hidden sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-lg border-b border-slate-200/70 dark:border-slate-800/80">
+        <div class="px-4 h-14 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6.5 6.5h11M6.5 17.5h11M4 10v4M20 10v4M7 4v16M17 4v16"/>
+              </svg>
+            </div>
+            <span class="font-bold text-base tracking-tight truncate">FitLog</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <!-- Быстрый вызов таймера -->
+            <button onclick="openTimerPanel()" id="mobile-timer-btn" class="h-10 px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 text-xs font-semibold active:scale-95 transition" title="Таймер отдыха">
+              <svg class="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></svg>
+              <span id="mobile-timer-badge" class="tabular-nums">Таймер</span>
+            </button>
+
+            <!-- Переключатель темы -->
+            <button onclick="cycleTheme()" id="mobile-theme-btn" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center active:scale-95 transition" title="Сменить тему">
+              <span id="mobile-theme-icon"></span>
+            </button>
+
+            <!-- Настройки -->
+            <button onclick="openSettingsModal()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center active:scale-95 transition" title="Настройки">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Главная область контента -->
+      <main id="main-content" class="flex-1 w-full max-w-6xl mx-auto px-3.5 sm:px-6 py-4 md:py-7 pb-36 md:pb-12"></main>
+    </div>
+
+    <!-- Плавающий виджет таймера отдыха -->
+    <div id="timer-widget" class="hidden fixed left-3 right-3 bottom-[4.75rem] md:left-auto md:right-6 md:bottom-6 md:w-96 z-40">
+      <div class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-slate-700/90 shadow-2xl overflow-hidden animate-modal">
+        <!-- Полоса прогресса -->
+        <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div id="timer-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300" style="width: 100%"></div>
+        </div>
+
+        <div class="p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500" id="timer-status-dot"></span>
+              <span id="timer-label" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">Таймер отдыха</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="toggleTimerSound()" id="timer-sound-btn" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Звук и вибрация"></button>
+              <button onclick="closeTimerPanel()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Скрыть">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Время + основные кнопки -->
+          <div class="flex items-center justify-between gap-3 mb-3.5">
+            <div id="timer-display" class="text-4xl font-extrabold tracking-tight tabular-nums text-slate-900 dark:text-white">01:30</div>
+            <div class="flex items-center gap-2">
+              <button onclick="addTimerSeconds(15)" class="h-11 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold active:scale-95 transition">+15с</button>
+              <button onclick="toggleTimerPause()" id="timer-play-btn" class="h-11 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-glow-indigo active:scale-95 transition">Старт</button>
+              <button onclick="resetTimer()" class="h-11 w-11 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-95 transition" title="Сброс">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Пресеты -->
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="startRestTimer(60, 'Отдых 60 сек')" class="h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-xs font-semibold text-slate-700 dark:text-slate-200 active:scale-95 transition">60 сек</button>
+            <button onclick="startRestTimer(90, 'Отдых 90 сек')" class="h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-xs font-semibold text-slate-700 dark:text-slate-200 active:scale-95 transition">90 сек</button>
+            <button onclick="startRestTimer(120, 'Отдых 120 сек')" class="h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 text-xs font-semibold text-slate-700 dark:text-slate-200 active:scale-95 transition">120 сек</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Мобильное фиксированное нижнее меню (< 768px) -->
+    <nav id="mobile-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 pb-safe"></nav>
+  </div>
+
+  <!-- Контейнер модальных окон -->
+  <div id="modal-root" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm"></div>
+
+  <!-- Контейнер Toast-уведомлений -->
+  <div id="toast-root" class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[60] pointer-events-none flex flex-col gap-2 items-center w-full max-w-sm px-4"></div>
+
+  <script>
+    /* =========================================================================
+       1. СТАРТОВЫЕ ДАННЫЕ И СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+       ========================================================================= */
+    const STORAGE_KEY = 'fitlog_workout_diary_v1';
+
+    function generateId(prefix = 'id') {
+      return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    function createDefaultSets(count, type = 'strength') {
+      const sets = [];
+      for (let i = 0; i < count; i++) {
+        sets.push({
+          id: generateId('set'),
+          weight: '',
+          reps: '',
+          done: false
+        });
+      }
+      return sets;
+    }
+
+    function createDefaultState() {
+      return {
+        version: 1,
+        activeTab: 'day1',
+        settings: {
+          theme: 'system', // 'system' | 'light' | 'dark'
+          soundEnabled: true,
+          autoStartTimer: true
+        },
+        days: [
+          {
+            id: 'day1',
+            shortDay: 'Вт',
+            shortLabel: 'Верх',
+            title: 'Вторник — Верх',
+            subtitle: 'Акцент на спину + сила',
+            banner: '',
+            exercises: [
+              {
+                id: 'ex_d1_1',
+                name: 'Тяга верхнего блока широким/средним хватом (или гравитрон)',
+                targetSets: 4,
+                targetReps: '8–10',
+                restSec: 120,
+                note: 'Акцент на спину.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d1_2',
+                name: 'Тяга в тренажёре «хаммер» с упором в грудь (или горизонтальный блок)',
+                targetSets: 4,
+                targetReps: '8–10',
+                restSec: 90,
+                note: 'Сводить лопатки.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d1_3',
+                name: 'Жим гантелей на наклонной скамье (30°) или жим в «хаммере»',
+                targetSets: 4,
+                targetReps: '8–10',
+                restSec: 90,
+                note: 'Сохранять рабочий вес.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d1_4',
+                name: 'Тяга гантели одной рукой в наклоне (или в блоке)',
+                targetSets: 3,
+                targetReps: '10–12',
+                restSec: 60,
+                note: 'Начинать с левой руки, правой делать столько же.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d1_5',
+                name: 'Суперсет 1А: Махи гантелями в стороны',
+                targetSets: 3,
+                targetReps: '12–15',
+                restSec: 0,
+                note: 'Сразу к 1Б (без отдыха).',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d1_6',
+                name: 'Суперсет 1Б: Тяга каната к лицу',
+                targetSets: 3,
+                targetReps: '15',
+                restSec: 60,
+                note: 'Задняя дельта и осанка.',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d1_7',
+                name: 'Суперсет 2А: Молотки с гантелями',
+                targetSets: 3,
+                targetReps: '10–12',
+                restSec: 0,
+                note: 'Начинать с левой руки, сразу к 2Б.',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d1_8',
+                name: 'Суперсет 2Б: Разгибание на трицепс в блоке',
+                targetSets: 3,
+                targetReps: '12–15',
+                restSec: 60,
+                note: 'Фиксировать локти.',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d1_9',
+                name: 'Заминка: Ходьба в гору на дорожке',
+                targetSets: 1,
+                targetReps: '15–20 мин',
+                restSec: 0,
+                note: 'Наклон 8–12%, скорость 4,5–5,5 км/ч.',
+                type: 'cardio',
+                isSuperset: false,
+                sets: createDefaultSets(1, 'cardio')
+              }
+            ]
+          },
+          {
+            id: 'day2',
+            shortDay: 'Чт',
+            shortLabel: 'Низ',
+            title: 'Четверг — Низ + Кор',
+            subtitle: 'Комфортные тренажёры',
+            banner: '',
+            exercises: [
+              {
+                id: 'ex_d2_1',
+                name: 'Жим ногами в тренажёре (45° или горизонтальный)',
+                targetSets: 4,
+                targetReps: '8–10',
+                restSec: 120,
+                note: 'Основное базовое движение.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d2_2',
+                name: 'Сгибание ног в тренажёре (сидя или лёжа)',
+                targetSets: 4,
+                targetReps: '10–12',
+                restSec: 90,
+                note: 'Задняя поверхность бедра.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d2_3',
+                name: 'Ягодичный мост в тренажёре (или гиперэкстензия с блином)',
+                targetSets: 3,
+                targetReps: '10–12',
+                restSec: 90,
+                note: 'Контролируемый темп.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d2_4',
+                name: 'Суперсет 1А: Разгибание ног в тренажёре',
+                targetSets: 3,
+                targetReps: '12–15',
+                restSec: 0,
+                note: 'Сразу к 1Б.',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d2_5',
+                name: 'Суперсет 1Б: Сведение/разведение ног в тренажёрах',
+                targetSets: 3,
+                targetReps: '15',
+                restSec: 60,
+                note: 'Комфортный вес.',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d2_6',
+                name: 'Подъёмы на носки в тренажёре',
+                targetSets: 4,
+                targetReps: '12–15',
+                restSec: 60,
+                note: 'Пауза в верхней точке.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d2_7',
+                name: 'Пресс (круг А): Скручивания в кроссовере или подъём ног в упоре',
+                targetSets: 3,
+                targetReps: '12–15',
+                restSec: 0,
+                note: 'Сразу к планке.',
+                type: 'strength',
+                isSuperset: true,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d2_8',
+                name: 'Пресс (круг Б): Планка',
+                targetSets: 3,
+                targetReps: '45–60 сек',
+                restSec: 60,
+                note: '3 круга всего.',
+                type: 'time',
+                isSuperset: true,
+                sets: createDefaultSets(3, 'time')
+              },
+              {
+                id: 'ex_d2_9',
+                name: 'Заминка: Эллипс или велотренажёр',
+                targetSets: 1,
+                targetReps: '15 мин',
+                restSec: 0,
+                note: 'Ровный темп.',
+                type: 'cardio',
+                isSuperset: false,
+                sets: createDefaultSets(1, 'cardio')
+              }
+            ]
+          },
+          {
+            id: 'day3',
+            shortDay: 'Сб',
+            shortLabel: 'Фулбоди',
+            title: 'Суббота — Фулбоди',
+            subtitle: 'Спина + метаболика',
+            banner: '',
+            exercises: [
+              {
+                id: 'ex_d3_1',
+                name: 'Тяга верхнего блока узким параллельным хватом',
+                targetSets: 4,
+                targetReps: '10–12',
+                restSec: 90,
+                note: 'Акцент на широчайшие.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(4)
+              },
+              {
+                id: 'ex_d3_2',
+                name: 'Пуловер в кроссовере с канатом',
+                targetSets: 3,
+                targetReps: '12–15',
+                restSec: 60,
+                note: 'Изоляция широчайших.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d3_3',
+                name: 'Жим в тренажёре на грудь (или отжимания на брусьях в гравитроне)',
+                targetSets: 3,
+                targetReps: '10–12',
+                restSec: 75,
+                note: 'Плавное опускание.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d3_4',
+                name: 'Жим ногами одной ногой в тренажёре',
+                targetSets: 3,
+                targetReps: '12 на каждую ногу',
+                restSec: 75,
+                note: 'Односторонняя нагрузка.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d3_5',
+                name: 'Жим гантелей сидя на плечи',
+                targetSets: 3,
+                targetReps: '10–12',
+                restSec: 75,
+                note: 'Без прогиба в пояснице.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d3_6',
+                name: 'Кардио-финишер: Гребной тренажёр или велотренажёр',
+                targetSets: 1,
+                targetReps: '10–15 мин',
+                restSec: 0,
+                note: 'Догружает спину и сжигает калории.',
+                type: 'cardio',
+                isSuperset: false,
+                sets: createDefaultSets(1, 'cardio')
+              }
+            ]
+          },
+          {
+            id: 'day4',
+            shortDay: 'Вс',
+            shortLabel: 'Доп.',
+            title: 'Воскресенье — Доп. день',
+            subtitle: 'Кардио + восстановление',
+            banner: 'Можно переносить на Пн, Ср, Пт или Вс и настраивать под себя.',
+            isOptionalCardioDay: true,
+            exercises: [
+              {
+                id: 'ex_d4_1',
+                name: 'Кардио в ровном темпе (ходьба в гору / эллипс / гребля)',
+                targetSets: 1,
+                targetReps: '40–50 мин',
+                restSec: 0,
+                note: 'Пульсовая зона 125–140 уд/мин.',
+                type: 'cardio',
+                isSuperset: false,
+                sets: createDefaultSets(1, 'cardio')
+              },
+              {
+                id: 'ex_d4_2',
+                name: 'Пресс (по желанию: скручивания или планка)',
+                targetSets: 3,
+                targetReps: '12–15 / 60 сек',
+                restSec: 60,
+                note: 'В комфортном темпе.',
+                type: 'strength',
+                isSuperset: false,
+                sets: createDefaultSets(3)
+              },
+              {
+                id: 'ex_d4_3',
+                name: 'Растяжка всего тела',
+                targetSets: 1,
+                targetReps: '10 мин',
+                restSec: 0,
+                note: 'Восстановление и мобильность.',
+                type: 'cardio',
+                isSuperset: false,
+                sets: createDefaultSets(1, 'cardio')
+              }
+            ]
+          }
+        ],
+        // История завершённых тренировок: массив сессий
+        // { id, dayId, dayTitle, date, completedSets, totalSets, exercises: { [exId]: { name, type, sets: [...] } } }
+        workoutHistory: [],
+        // Ориентиры по питанию
+        nutrition: {
+          goalName: 'Сушка / рельеф',
+          calories: '2050–2200 ккал/день',
+          protein: '150–160 г',
+          fat: '65–75 г',
+          carbs: '210–220 г',
+          targetWeight: 78.7
+        },
+        // История замеров InBody
+        inbody: [
+          {
+            id: 'inb_1',
+            date: '2026-09-08',
+            weight: 94.8,
+            fatKg: 26.9,
+            fatPct: 28.3,
+            muscleKg: 38.9,
+            visceral: 11,
+            waterL: 49.7,
+            bmr: 1838,
+            leftArm: 3.8,
+            rightArm: 4.0
+          },
+          {
+            id: 'inb_2',
+            date: '2026-11-21',
+            weight: 92.5,
+            fatKg: 25.6,
+            fatPct: 27.7,
+            muscleKg: 38.3,
+            visceral: 10,
+            waterL: 48.9,
+            bmr: 1816,
+            leftArm: 3.7,
+            rightArm: 3.9
+          }
+        ],
+        // Журнал кардио-тренировок
+        cardioLogs: []
+      };
+    }
+
+    let state = loadState();
+    let editModeDays = {}; // Временный флаг режима редактирования для каждого дня
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return createDefaultState();
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.days) || !parsed.nutrition) {
+          return createDefaultState();
+        }
+        return parsed;
+      } catch (err) {
+        console.error('Ошибка чтения localStorage:', err);
+        return createDefaultState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.error('Ошибка сохранения в localStorage:', err);
+      }
+    }
+
+    /* =========================================================================
+       2. УТИЛИТЫ (ДАТЫ, ЭКРАНИРОВАНИЕ, TOAST, ТЕМЫ)
+       ========================================================================= */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDateRu(isoDate) {
+      if (!isoDate) return '—';
+      const parts = isoDate.split('T')[0].split('-');
+      if (parts.length !== 3) return isoDate;
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+
+    function getTodayISO() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function showToast(message, type = 'default') {
+      const root = document.getElementById('toast-root');
+      const el = document.createElement('div');
+      const colors = {
+        default: 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900',
+        success: 'bg-emerald-600 text-white',
+        warning: 'bg-amber-500 text-white',
+        error: 'bg-rose-600 text-white'
+      };
+      el.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-sm font-medium flex items-center gap-2.5 animate-toast ${colors[type] || colors.default}`;
+      el.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      root.appendChild(el);
+      setTimeout(() => {
+        el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(() => el.remove(), 260);
+      }, 2800);
+    }
+
+    /* Темы оформления */
+    const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function applyTheme() {
+      const mode = state.settings.theme || 'system';
+      const isDark = mode === 'dark' || (mode === 'system' && systemDarkQuery.matches);
+      document.documentElement.classList.toggle('dark', isDark);
+
+      const icons = {
+        system: `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+        light: `<svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`,
+        dark: `<svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`
+      };
+      const labels = {
+        system: 'Системная',
+        light: 'Светлая',
+        dark: 'Тёмная'
+      };
+
+      const mIcon = document.getElementById('mobile-theme-icon');
+      const dIcon = document.getElementById('desktop-theme-icon');
+      const dLabel = document.getElementById('desktop-theme-label');
+      if (mIcon) mIcon.innerHTML = icons[mode];
+      if (dIcon) dIcon.innerHTML = icons[mode];
+      if (dLabel) dLabel.textContent = labels[mode];
+    }
+
+    function setTheme(mode) {
+      state.settings.theme = mode;
+      saveState();
+      applyTheme();
+    }
+
+    function cycleTheme() {
+      const order = ['system', 'light', 'dark'];
+      const next = order[(order.indexOf(state.settings.theme) + 1) % order.length];
+      setTheme(next);
+      const names = { system: 'Системная тема', light: 'Светлая тема', dark: 'Тёмная тема' };
+      showToast(names[next]);
+    }
+
+    systemDarkQuery.addEventListener('change', () => {
+      if (state.settings.theme === 'system') applyTheme();
+    });
+
+    /* =========================================================================
+       3. ТАЙМЕР ОТДЫХА (WEB AUDIO API + VIBRATE + ТОЧНЫЙ ОТСЧЁТ)
+       ========================================================================= */
+    const timer = {
+      visible: false,
+      running: false,
+      totalSec: 90,
+      remainingSec: 90,
+      endTime: null,
+      intervalId: null,
+      label: 'Таймер отдыха'
+    };
+
+    function playFinishSignal() {
+      if (!state.settings.soundEnabled) return;
+      try {
+        if (navigator.vibrate) {
+          navigator.vibrate([220, 100, 220]);
+        }
+      } catch (e) {}
+
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const beep = (startOffset, freq) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + startOffset);
+          gain.gain.setValueAtTime(0.001, ctx.currentTime + startOffset);
+          gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + startOffset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + 0.24);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + startOffset);
+          osc.stop(ctx.currentTime + startOffset + 0.25);
+        };
+        beep(0, 880);
+        beep(0.28, 1046.5);
+      } catch (e) {
+        console.warn('AudioContext error:', e);
+      }
+    }
+
+    function formatTimer(sec) {
+      const s = Math.max(0, Math.ceil(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    }
+
+    function updateTimerUI() {
+      const widget = document.getElementById('timer-widget');
+      const display = document.getElementById('timer-display');
+      const labelEl = document.getElementById('timer-label');
+      const bar = document.getElementById('timer-progress-bar');
+      const playBtn = document.getElementById('timer-play-btn');
+      const dot = document.getElementById('timer-status-dot');
+      const soundBtn = document.getElementById('timer-sound-btn');
+      const mBadge = document.getElementById('mobile-timer-badge');
+      const sBadge = document.getElementById('sidebar-timer-badge');
+
+      widget.classList.toggle('hidden', !timer.visible);
+      display.textContent = formatTimer(timer.remainingSec);
+      labelEl.textContent = timer.label;
+
+      const pct = timer.totalSec > 0 ? Math.max(0, Math.min(100, (timer.remainingSec / timer.totalSec) * 100)) : 0;
+      bar.style.width = `${pct}%`;
+
+      playBtn.textContent = timer.running ? 'Пауза' : 'Старт';
+      dot.className = `w-2.5 h-2.5 rounded-full ${timer.running ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`;
+
+      if (soundBtn) {
+        soundBtn.innerHTML = state.settings.soundEnabled
+          ? `<svg class="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`
+          : `<svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+      }
+
+      if (timer.running) {
+        const txt = formatTimer(timer.remainingSec);
+        if (mBadge) mBadge.textContent = txt;
+        if (sBadge) {
+          sBadge.textContent = txt;
+          sBadge.classList.remove('hidden');
+        }
+      } else {
+        if (mBadge) mBadge.textContent = 'Таймер';
+        if (sBadge) sBadge.classList.add('hidden');
+      }
+    }
+
+    function tickTimer() {
+      if (!timer.running || !timer.endTime) return;
+      const diff = (timer.endTime - Date.now()) / 1000;
+      if (diff <= 0) {
+        timer.remainingSec = 0;
+        timer.running = false;
+        timer.endTime = null;
+        clearInterval(timer.intervalId);
+        timer.intervalId = null;
+        updateTimerUI();
+        playFinishSignal();
+        showToast('Время отдыха вышло! Пора к подходу 💪', 'success');
+      } else {
+        timer.remainingSec = diff;
+        updateTimerUI();
+      }
+    }
+
+    function startRestTimer(seconds, label = 'Таймер отдыха') {
+      clearInterval(timer.intervalId);
+      timer.visible = true;
+      timer.totalSec = seconds;
+      timer.remainingSec = seconds;
+      timer.label = label;
+      timer.running = true;
+      timer.endTime = Date.now() + seconds * 1000;
+      timer.intervalId = setInterval(tickTimer, 200);
+      updateTimerUI();
+    }
+
+    function openTimerPanel() {
+      timer.visible = !timer.visible;
+      updateTimerUI();
+    }
+
+    function closeTimerPanel() {
+      timer.visible = false;
+      updateTimerUI();
+    }
+
+    function toggleTimerPause() {
+      if (timer.running) {
+        timer.running = false;
+        clearInterval(timer.intervalId);
+        timer.intervalId = null;
+      } else {
+        if (timer.remainingSec <= 0) timer.remainingSec = timer.totalSec;
+        timer.running = true;
+        timer.endTime = Date.now() + timer.remainingSec * 1000;
+        timer.intervalId = setInterval(tickTimer, 200);
+      }
+      updateTimerUI();
+    }
+
+    function addTimerSeconds(sec) {
+      timer.totalSec += sec;
+      timer.remainingSec += sec;
+      if (timer.running && timer.endTime) {
+        timer.endTime += sec * 1000;
+      }
+      updateTimerUI();
+    }
+
+    function resetTimer() {
+      clearInterval(timer.intervalId);
+      timer.intervalId = null;
+      timer.running = false;
+      timer.remainingSec = timer.totalSec;
+      timer.endTime = null;
+      updateTimerUI();
+    }
+
+    function toggleTimerSound() {
+      state.settings.soundEnabled = !state.settings.soundEnabled;
+      saveState();
+      updateTimerUI();
+      showToast(state.settings.soundEnabled ? 'Звук и вибрация включены' : 'Звук отключён');
+    }
+
+    /* =========================================================================
+       4. НАВИГАЦИЯ (НИЖНЕЕ МЕНЮ + БОКОВАЯ ПАНЕЛЬ)
+       ========================================================================= */
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      saveState();
+      renderNavigation();
+      renderMain();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function getNavIcon(id, isActive) {
+      const cls = `w-5 h-5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.9]'}`;
+      if (id === 'progress') {
+        return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>`;
+      }
+      if (id === 'day4') {
+        return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`;
+      }
+      return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11M4 10v4M20 10v4M7 4v16M17 4v16"/></svg>`;
+    }
+
+    function renderNavigation() {
+      const mobileNav = document.getElementById('mobile-nav');
+      const desktopNav = document.getElementById('desktop-nav');
+
+      const items = [
+        ...state.days.map(d => ({
+          id: d.id,
+          mobileTitle: `${d.shortDay} · ${d.shortLabel}`,
+          desktopTitle: d.title,
+          desktopSub: d.subtitle
+        })),
+        {
+          id: 'progress',
+          mobileTitle: 'Прогресс',
+          desktopTitle: 'Прогресс и InBody',
+          desktopSub: 'Замеры, КБЖУ и кардио'
+        }
+      ];
+
+      // Мобильная панель
+      mobileNav.innerHTML = `
+        <div class="grid grid-cols-5 h-16 max-w-lg mx-auto px-1">
+          ${items.map(item => {
+            const active = state.activeTab === item.id;
+            return `
+              <button onclick="switchTab('${item.id}')" class="flex flex-col items-center justify-center gap-1 rounded-xl transition-colors ${active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}">
+                <div class="px-3 py-1 rounded-full transition-colors ${active ? 'bg-indigo-50 dark:bg-indigo-500/15' : ''}">
+                  ${getNavIcon(item.id, active)}
+                </div>
+                <span class="text-[10.5px] leading-none font-${active ? '700' : '500'} truncate max-w-full px-0.5">${escapeHtml(item.mobileTitle)}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      // Десктопная панель
+      desktopNav.innerHTML = items.map(item => {
+        const active = state.activeTab === item.id;
+        return `
+          <button onclick="switchTab('${item.id}')" class="w-full text-left px-3.5 py-3 rounded-2xl flex items-center gap-3 transition-all ${active ? 'bg-indigo-600 text-white shadow-glow-indigo' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'}">
+            <div class="shrink-0 ${active ? 'text-white' : 'text-slate-400 dark:text-slate-500'}">
+              ${getNavIcon(item.id, active)}
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold truncate">${escapeHtml(item.desktopTitle)}</div>
+              <div class="text-xs truncate ${active ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}">${escapeHtml(item.desktopSub)}</div>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    /* =========================================================================
+       5. ЛОГИКА ТРЕНИРОВОЧНОГО ДНЯ И КАРТОЧЕК УПРАЖНЕНИЙ
+       ========================================================================= */
+    function getLastExerciseHistory(dayId, exId) {
+      for (let i = state.workoutHistory.length - 1; i >= 0; i--) {
+        const session = state.workoutHistory[i];
+        if (session.exercises && session.exercises[exId] && session.exercises[exId].sets.length > 0) {
+          return {
+            date: session.date,
+            sets: session.exercises[exId].sets
+          };
+        }
+      }
+      return null;
+    }
+
+    function getLastDaySession(dayId) {
+      for (let i = state.workoutHistory.length - 1; i >= 0; i--) {
+        if (state.workoutHistory[i].dayId === dayId) return state.workoutHistory[i];
+      }
+      return null;
+    }
+
+    function getDayProgress(day) {
+      let total = 0;
+      let done = 0;
+      day.exercises.forEach(ex => {
+        total += ex.sets.length;
+        done += ex.sets.filter(s => s.done).length;
+      });
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      return { total, done, pct };
+    }
+
+    function renderMain() {
+      const container = document.getElementById('main-content');
+      if (state.activeTab === 'progress') {
+        renderProgressView(container);
+      } else {
+        const day = state.days.find(d => d.id === state.activeTab) || state.days[0];
+        renderDayView(container, day);
+      }
+    }
+
+    function renderDayView(container, day) {
+      const progress = getDayProgress(day);
+      const lastSession = getLastDaySession(day.id);
+      const isEditMode = !!editModeDays[day.id];
+
+      container.innerHTML = `
+        <!-- Шапка тренировочного дня -->
+        <section class="mb-5 animate-card">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">${escapeHtml(day.shortDay)}</span>
+                ${lastSession
+                  ? `<button onclick="openDayHistoryModal('${day.id}')" class="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline decoration-dotted underline-offset-4 transition">Последняя: ${formatDateRu(lastSession.date)}</button>`
+                  : `<span class="text-xs text-slate-400 dark:text-slate-500">Ещё нет сохранённых тренировок</span>`
+                }
+              </div>
+              <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">${escapeHtml(day.title)}</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">${escapeHtml(day.subtitle)}</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="openDayHistoryModal('${day.id}')" class="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 active:scale-95 transition">
+                <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>История</span>
+              </button>
+              <button onclick="toggleDayEditMode('${day.id}')" class="h-10 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition ${isEditMode ? 'bg-indigo-600 border-indigo-600 text-white shadow-glow-indigo' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                <span>${isEditMode ? 'Готово' : 'Настроить'}</span>
+              </button>
+            </div>
+          </div>
+
+          ${isEditMode ? `
+            <div class="mb-4 p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200/80 dark:border-indigo-500/30 flex flex-wrap items-center justify-between gap-3">
+              <div class="text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 font-medium">Режим редактирования программы: меняйте порядок, редактируйте или добавляйте упражнения.</div>
+              <div class="flex items-center gap-2">
+                <button onclick="openEditDayModal('${day.id}')" class="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/40 text-xs font-semibold text-indigo-700 dark:text-indigo-300 active:scale-95 transition">Название дня</button>
+                <button onclick="openExerciseModal('${day.id}', null)" class="h-9 px-3.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition">+ Упражнение</button>
+              </div>
+            </div>
+          ` : ''}
+
+          ${day.banner ? `
+            <div class="mb-4 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/25 flex items-start gap-2.5 text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
+              <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>${escapeHtml(day.banner)}</span>
+            </div>
+          ` : ''}
+
+          <!-- Прогресс-бар тренировки -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-soft dark:shadow-soft-dark">
+            <div class="flex items-center justify-between text-xs sm:text-sm font-semibold mb-2">
+              <span class="text-slate-600 dark:text-slate-300">Прогресс тренировки</span>
+              <span id="day-progress-text" class="tabular-nums text-indigo-600 dark:text-indigo-400">${progress.done} из ${progress.total} подходов (${progress.pct}%)</span>
+            </div>
+            <div class="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div id="day-progress-bar" class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300" style="width: ${progress.pct}%"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Сетка карточек упражнений -->
+        <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          ${day.exercises.map((ex, idx) => renderExerciseCard(day, ex, idx, isEditMode)).join('')}
+        </section>
+
+        ${day.isOptionalCardioDay ? renderInlineCardioLogger() : ''}
+
+        <!-- Кнопка завершения и сохранения тренировки -->
+        <section class="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-soft dark:shadow-soft-dark">
+          <div>
+            <h3 class="font-bold text-base text-slate-900 dark:text-white">Завершить тренировку</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Выполненные подходы сохранятся в «Прошлую тренировку», а галочки сбросятся.</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openExerciseModal('${day.id}', null)" class="h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition">+ Упражнение</button>
+            <button onclick="finishWorkout('${day.id}')" class="flex-1 sm:flex-none h-12 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-glow-emerald active:scale-95 transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Сохранить тренировку</span>
+            </button>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderExerciseCard(day, ex, index, isEditMode) {
+      const history = getLastExerciseHistory(day.id, ex.id);
+      const isCardio = ex.type === 'cardio';
+      const isTime = ex.type === 'time';
+      const allDone = ex.sets.length > 0 && ex.sets.every(s => s.done);
+
+      // Бейдж отдыха или суперсета
+      let restControl = '';
+      if (ex.restSec > 0) {
+        restControl = `
+          <button onclick="startRestTimer(${ex.restSec}, '${escapeHtml(ex.name).replace(/'/g, "\\'")}')" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 text-xs font-bold active:scale-95 transition">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></svg>
+            <span>${ex.restSec} сек</span>
+          </button>
+        `;
+      } else if (ex.isSuperset) {
+        restControl = `
+          <span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+            ⚡ Суперсет · без отдыха
+          </span>
+        `;
+      } else {
+        restControl = `
+          <span class="inline-flex items-center px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-medium">
+            Без таймера
+          </span>
+        `;
+      }
+
+      // Форматирование прошлой тренировки
+      let prevBlock = '';
+      if (history) {
+        const summary = history.sets.map((s, i) => {
+          if (isCardio) return `${s.reps || '—'} мин${s.weight ? ` (${s.weight})` : ''}`;
+          if (isTime) return `${s.reps || '—'} сек${s.weight ? ` (+${s.weight} кг)` : ''}`;
+          return `${s.weight || '0'}×${s.reps || '0'}`;
+        }).join(' · ');
+
+        prevBlock = `
+          <div class="mt-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60 flex items-start gap-2 text-xs">
+            <svg class="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+            <div class="min-w-0">
+              <span class="font-semibold text-slate-700 dark:text-slate-200">Прошлая (${formatDateRu(history.date)}):</span>
+              <span class="text-slate-600 dark:text-slate-300 ml-1 break-words">${escapeHtml(summary)}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Заголовки колонок ввода
+      const col1Label = isCardio ? 'Интенс. / пульс' : isTime ? 'Доп. вес (кг)' : 'Вес (кг)';
+      const col2Label = isCardio ? 'Время (мин)' : isTime ? 'Время (сек)' : 'Повт.';
+      const col1Placeholder = isCardio ? 'накл./пульс' : isTime ? '0' : 'кг';
+      const col2Placeholder = isCardio ? 'мин' : isTime ? 'сек' : 'повт';
+
+      return `
+        <article id="card-${ex.id}" class="animate-card bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all duration-200 shadow-soft dark:shadow-soft-dark ${allDone ? 'border-emerald-400/70 dark:border-emerald-500/50 ring-1 ring-emerald-400/20' : 'border-slate-200/80 dark:border-slate-800'}">
+          <!-- Верхняя строка карточки -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${allDone ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">${index + 1}</span>
+                <h3 class="font-bold text-[15px] sm:text-base leading-snug text-slate-900 dark:text-white">${escapeHtml(ex.name)}</h3>
+              </div>
+            </div>
+
+            ${isEditMode ? `
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="moveExercise('${day.id}', ${index}, -1)" ${index === 0 ? 'disabled' : ''} class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 disabled:opacity-30 flex items-center justify-center text-slate-600 dark:text-slate-300" title="Выше">↑</button>
+                <button onclick="moveExercise('${day.id}', ${index}, 1)" ${index === day.exercises.length - 1 ? 'disabled' : ''} class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 disabled:opacity-30 flex items-center justify-center text-slate-600 dark:text-slate-300" title="Ниже">↓</button>
+                <button onclick="openExerciseModal('${day.id}', '${ex.id}')" class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center" title="Редактировать">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+                <button onclick="confirmDeleteExercise('${day.id}', '${ex.id}')" class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center" title="Удалить">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+              </div>
+            ` : `
+              <button onclick="openExerciseModal('${day.id}', '${ex.id}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center shrink-0 transition" title="Редактировать упражнение">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
+            `}
+          </div>
+
+          <!-- Бейджи цели и отдыха -->
+          <div class="mt-2.5 flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold">
+              ${ex.targetSets} × ${escapeHtml(ex.targetReps)}
+            </span>
+            ${restControl}
+          </div>
+
+          <!-- Подсказка по технике -->
+          ${ex.note ? `<p class="mt-2.5 text-xs sm:text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">💡 ${escapeHtml(ex.note)}</p>` : ''}
+
+          <!-- Прошлая тренировка -->
+          ${prevBlock}
+
+          <!-- Таблица/строки подходов -->
+          <div class="mt-3.5">
+            <div class="grid grid-cols-[28px_1fr_1fr_48px] gap-2 px-1 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <span class="text-center">#</span>
+              <span>${col1Label}</span>
+              <span>${col2Label}</span>
+              <span class="text-center">Ок</span>
+            </div>
+
+            <div class="space-y-2">
+              ${ex.sets.map((s, sIdx) => {
+                const prevSet = history && history.sets[sIdx] ? history.sets[sIdx] : null;
+                const ph1 = prevSet && prevSet.weight ? prevSet.weight : col1Placeholder;
+                const ph2 = prevSet && prevSet.reps ? prevSet.reps : col2Placeholder;
+                return `
+                  <div class="grid grid-cols-[28px_1fr_1fr_48px] gap-2 items-center transition-opacity ${s.done ? 'opacity-85' : ''}">
+                    <span class="text-xs font-bold text-center text-slate-400 dark:text-slate-500 tabular-nums">${sIdx + 1}</span>
+                    <input
+                      type="text"
+                      inputmode="${isCardio ? 'text' : 'decimal'}"
+                      value="${escapeHtml(s.weight)}"
+                      placeholder="${escapeHtml(ph1)}"
+                      oninput="updateSetValue('${day.id}', '${ex.id}', '${s.id}', 'weight', this.value)"
+                      class="w-full h-11 sm:h-12 px-3 rounded-xl text-sm font-semibold tabular-nums border transition outline-none ${s.done ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-200' : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800'}"
+                    />
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      value="${escapeHtml(s.reps)}"
+                      placeholder="${escapeHtml(ph2)}"
+                      oninput="updateSetValue('${day.id}', '${ex.id}', '${s.id}', 'reps', this.value)"
+                      class="w-full h-11 sm:h-12 px-3 rounded-xl text-sm font-semibold tabular-nums border transition outline-none ${s.done ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-200' : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800'}"
+                    />
+                    <button
+                      onclick="toggleSetDone('${day.id}', '${ex.id}', '${s.id}', this)"
+                      aria-label="Отметить подход"
+                      class="w-12 h-11 sm:h-12 rounded-xl flex items-center justify-center transition-all active:scale-90 ${s.done ? 'bg-emerald-500 text-white shadow-glow-emerald' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500'}"
+                    >
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Управление количеством подходов -->
+            <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+              <button onclick="addSet('${day.id}', '${ex.id}')" class="h-9 px-3 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 active:scale-95 transition">
+                + Подход
+              </button>
+              ${ex.sets.length > 1 ? `
+                <button onclick="removeLastSet('${day.id}', '${ex.id}')" class="h-9 px-3 rounded-xl text-xs font-medium text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 active:scale-95 transition">
+                  − Убрать подход
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderInlineCardioLogger() {
+      return `
+        <section class="mt-5 bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-soft dark:shadow-soft-dark animate-card">
+          <div class="flex items-center justify-between gap-2 mb-3.5">
+            <div>
+              <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                Записать кардио-сессию
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Сразу добавится в общий журнал на вкладке «Прогресс».</p>
+            </div>
+          </div>
+
+          <form onsubmit="handleInlineCardioSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Вид кардио</label>
+              <select id="inline-cardio-type" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500">
+                <option value="Ходьба в гору">Ходьба в гору</option>
+                <option value="Эллипс">Эллипс</option>
+                <option value="Гребля">Гребля</option>
+                <option value="Велотренажёр">Велотренажёр</option>
+                <option value="Другое">Другое</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Длительность (мин)</label>
+              <input id="inline-cardio-dur" type="number" inputmode="numeric" placeholder="45" required class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Средний пульс (уд/мин)</label>
+              <input id="inline-cardio-hr" type="number" inputmode="numeric" placeholder="132" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Самочувствие / заметка</label>
+              <input id="inline-cardio-note" type="text" placeholder="Бодро, ровный пульс" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div class="sm:col-span-2 lg:col-span-4 flex justify-end">
+              <button type="submit" class="w-full sm:w-auto h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-glow-indigo active:scale-95 transition">Добавить в журнал кардио</button>
+            </div>
+          </form>
+        </section>
+      `;
+    }
+
+    function handleInlineCardioSubmit(e) {
+      e.preventDefault();
+      const type = document.getElementById('inline-cardio-type').value;
+      const duration = Number(document.getElementById('inline-cardio-dur').value);
+      const hr = document.getElementById('inline-cardio-hr').value;
+      const note = document.getElementById('inline-cardio-note').value.trim();
+
+      if (!duration || duration <= 0) {
+        showToast('Укажите длительность в минутах', 'warning');
+        return;
+      }
+
+      state.cardioLogs.unshift({
+        id: generateId('cardio'),
+        date: getTodayISO(),
+        type,
+        duration,
+        hr: hr ? Number(hr) : null,
+        note
+      });
+      saveState();
+      e.target.reset();
+      showToast('Кардио-сессия записана в журнал!', 'success');
+    }
+
+    /* Обновление значений подхода без перерисовки DOM (сохраняет фокус клавиатуры на телефоне) */
+    function updateSetValue(dayId, exId, setId, field, value) {
+      const day = state.days.find(d => d.id === dayId);
+      const ex = day?.exercises.find(e => e.id === exId);
+      const set = ex?.sets.find(s => s.id === setId);
+      if (!set) return;
+      set[field] = value;
+      saveState();
+    }
+
+    function toggleSetDone(dayId, exId, setId, btnEl) {
+      const day = state.days.find(d => d.id === dayId);
+      const ex = day?.exercises.find(e => e.id === exId);
+      const set = ex?.sets.find(s => s.id === setId);
+      if (!set) return;
+
+      set.done = !set.done;
+
+      // Если поле пустое при отметке, подставим значение из прошлой тренировки для удобства
+      if (set.done && !set.weight && !set.reps) {
+        const hist = getLastExerciseHistory(dayId, exId);
+        const sIdx = ex.sets.findIndex(s => s.id === setId);
+        if (hist && hist.sets[sIdx]) {
+          if (!set.weight && hist.sets[sIdx].weight) set.weight = hist.sets[sIdx].weight;
+          if (!set.reps && hist.sets[sIdx].reps) set.reps = hist.sets[sIdx].reps;
+        }
+      }
+
+      saveState();
+
+      // Автозапуск таймера отдыха
+      if (set.done && ex.restSec > 0 && state.settings.autoStartTimer) {
+        startRestTimer(ex.restSec, ex.name);
+      }
+
+      // Точечно обновляем карточку и прогресс-бар
+      const cardEl = document.getElementById(`card-${ex.id}`);
+      const exIdx = day.exercises.findIndex(e => e.id === ex.id);
+      if (cardEl) {
+        const temp = document.createElement('div');
+        temp.innerHTML = renderExerciseCard(day, ex, exIdx, !!editModeDays[day.id]);
+        cardEl.replaceWith(temp.firstElementChild);
+      }
+      const prog = getDayProgress(day);
+      const pText = document.getElementById('day-progress-text');
+      const pBar = document.getElementById('day-progress-bar');
+      if (pText) pText.textContent = `${prog.done} из ${prog.total} подходов (${prog.pct}%)`;
+      if (pBar) pBar.style.width = `${prog.pct}%`;
+    }
+
+    function addSet(dayId, exId) {
+      const day = state.days.find(d => d.id === dayId);
+      const ex = day?.exercises.find(e => e.id === exId);
+      if (!ex) return;
+      const last = ex.sets[ex.sets.length - 1];
+      ex.sets.push({
+        id: generateId('set'),
+        weight: last ? last.weight : '',
+        reps: last ? last.reps : '',
+        done: false
+      });
+      saveState();
+      renderMain();
+    }
+
+    function removeLastSet(dayId, exId) {
+      const day = state.days.find(d => d.id === dayId);
+      const ex = day?.exercises.find(e => e.id === exId);
+      if (!ex || ex.sets.length <= 1) return;
+      ex.sets.pop();
+      saveState();
+      renderMain();
+    }
+
+    function finishWorkout(dayId) {
+      const day = state.days.find(d => d.id === dayId);
+      if (!day) return;
+
+      const prog = getDayProgress(day);
+      if (prog.done === 0) {
+        showToast('Отметьте галочкой хотя бы один подход перед сохранением', 'warning');
+        return;
+      }
+
+      const exercisesSnapshot = {};
+      day.exercises.forEach(ex => {
+        const completed = ex.sets
+          .filter(s => s.done)
+          .map(s => ({ weight: s.weight.trim(), reps: s.reps.trim() }));
+        if (completed.length > 0) {
+          exercisesSnapshot[ex.id] = {
+            name: ex.name,
+            type: ex.type,
+            sets: completed
+          };
+        }
+        // Сбрасываем галочки, но оставляем значения в полях пустыми (они отобразятся в плейсхолдерах и блоке «Прошлая»)
+        ex.sets.forEach(s => {
+          s.done = false;
+          s.weight = '';
+          s.reps = '';
+        });
+      });
+
+      state.workoutHistory.push({
+        id: generateId('sess'),
+        dayId: day.id,
+        dayTitle: day.title,
+        date: getTodayISO(),
+        completedSets: prog.done,
+        totalSets: prog.total,
+        exercises: exercisesSnapshot
+      });
+
+      saveState();
+      renderMain();
+      showToast(`Тренировка сохранена (${prog.done} подходов)! 🔥`, 'success');
+    }
+
+    /* Режим редактирования программы */
+    function toggleDayEditMode(dayId) {
+      editModeDays[dayId] = !editModeDays[dayId];
+      renderMain();
+    }
+
+    function moveExercise(dayId, index, delta) {
+      const day = state.days.find(d => d.id === dayId);
+      if (!day) return;
+      const newIdx = index + delta;
+      if (newIdx < 0 || newIdx >= day.exercises.length) return;
+      const [moved] = day.exercises.splice(index, 1);
+      day.exercises.splice(newIdx, 0, moved);
+      saveState();
+      renderMain();
+    }
+
+    function confirmDeleteExercise(dayId, exId) {
+      const day = state.days.find(d => d.id === dayId);
+      const ex = day?.exercises.find(e => e.id === exId);
+      if (!ex) return;
+
+      openConfirmModal(
+        'Удалить упражнение?',
+        `Упражнение «${ex.name}» будет удалено из программы этого дня.`,
+        'Удалить',
+        () => {
+          day.exercises = day.exercises.filter(e => e.id !== exId);
+          saveState();
+          renderMain();
+          showToast('Упражнение удалено');
+        }
+      );
+    }
+
+    /* =========================================================================
+       6. ВКЛАДКА «ПРОГРЕСС И INBODY»
+       ========================================================================= */
+    function renderProgressView(container) {
+      const sortedInbody = [...state.inbody].sort((a, b) => a.date.localeCompare(b.date));
+      const first = sortedInbody[0] || null;
+      const latest = sortedInbody[sortedInbody.length - 1] || null;
+      const nut = state.nutrition;
+
+      // Расчёт до целевого веса
+      let weightGoalHtml = '';
+      if (latest && nut.targetWeight) {
+        const diff = +(latest.weight - nut.targetWeight).toFixed(1);
+        weightGoalHtml = diff > 0
+          ? `<span class="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Осталось −${diff} кг до цели</span>`
+          : `<span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Цель достигнута! 🎉</span>`;
+      }
+
+      container.innerHTML = `
+        <div class="space-y-6 animate-card">
+          <!-- Заголовок -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Прогресс и InBody</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Ориентиры по питанию, динамика состава тела и кардио</p>
+            </div>
+          </div>
+
+          <!-- Блок 1: Ориентиры по питанию и целевому весу -->
+          <section class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-soft dark:shadow-soft-dark">
+            <div class="flex items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white">Ориентиры по питанию</h3>
+                <span class="inline-block mt-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">${escapeHtml(nut.goalName)}</span>
+              </div>
+              <button onclick="openEditNutritionModal()" class="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition">Редактировать цели</button>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/60">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Калории</div>
+                <div class="text-base sm:text-lg font-extrabold mt-1 text-slate-900 dark:text-white">${escapeHtml(nut.calories)}</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">Белок</div>
+                <div class="text-base sm:text-lg font-extrabold mt-1 text-indigo-950 dark:text-indigo-200">${escapeHtml(nut.protein)}</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Жиры</div>
+                <div class="text-base sm:text-lg font-extrabold mt-1 text-amber-950 dark:text-amber-200">${escapeHtml(nut.fat)}</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Углеводы</div>
+                <div class="text-base sm:text-lg font-extrabold mt-1 text-emerald-950 dark:text-emerald-200">${escapeHtml(nut.carbs)}</div>
+              </div>
+              <div class="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-500/15 dark:to-violet-500/15 border border-indigo-200/70 dark:border-indigo-500/30">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">Целевой вес</div>
+                <div class="text-lg font-extrabold mt-1 text-slate-900 dark:text-white">${nut.targetWeight} кг</div>
+                <div class="mt-0.5">${weightGoalHtml}</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Блок 2: Динамика InBody -->
+          <section class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-soft dark:shadow-soft-dark">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white">Динамика замеров InBody</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  ${first && latest && sortedInbody.length > 1
+                    ? `Сравнение: ${formatDateRu(first.date)} → ${formatDateRu(latest.date)}`
+                    : 'Добавляйте замеры для отслеживания прогресса'}
+                </p>
+              </div>
+              <button onclick="openAddInbodyModal()" class="h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-glow-indigo active:scale-95 transition">+ Добавить замер</button>
+            </div>
+
+            ${latest ? renderInbodyDeltaCards(first, latest) : '<p class="text-sm text-slate-500">Замеров пока нет.</p>'}
+
+            <!-- SVG-график динамики -->
+            ${sortedInbody.length >= 2 ? renderInbodyChart(sortedInbody) : ''}
+
+            <!-- Список/таблица всех замеров -->
+            <div class="mt-5">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">История всех замеров</h4>
+
+              <!-- Мобильные карточки замеров -->
+              <div class="md:hidden space-y-3">
+                ${[...sortedInbody].reverse().map(m => `
+                  <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="font-bold text-sm text-slate-900 dark:text-white">${formatDateRu(m.date)}</span>
+                      <button onclick="confirmDeleteInbody('${m.id}')" class="text-xs text-slate-400 hover:text-rose-500 px-2 py-1">Удалить</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-y-1.5 gap-x-3 text-xs">
+                      <div class="flex justify-between"><span class="text-slate-500">Вес:</span><span class="font-bold">${m.weight} кг</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Жир:</span><span class="font-bold">${m.fatKg} кг (${m.fatPct}%)</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Мышцы:</span><span class="font-bold">${m.muscleKg} кг</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Висц. жир:</span><span class="font-bold">${m.visceral}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Вода:</span><span class="font-bold">${m.waterL} л</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">Обмен:</span><span class="font-bold">${m.bmr} ккал</span></div>
+                      <div class="col-span-2 flex justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <span class="text-slate-500">Руки (Л / П):</span>
+                        <span class="font-bold">${m.leftArm} кг / ${m.rightArm} кг</span>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+
+              <!-- Десктопная таблица замеров -->
+              <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold">
+                    <tr>
+                      <th class="px-3.5 py-3">Дата</th>
+                      <th class="px-3 py-3">Вес</th>
+                      <th class="px-3 py-3">Жир (кг / %)</th>
+                      <th class="px-3 py-3">Мышцы</th>
+                      <th class="px-3 py-3">Висц.</th>
+                      <th class="px-3 py-3">Вода</th>
+                      <th class="px-3 py-3">Обмен</th>
+                      <th class="px-3 py-3">Руки (Л / П)</th>
+                      <th class="px-3 py-3 text-right"></th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    ${[...sortedInbody].reverse().map(m => `
+                      <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td class="px-3.5 py-3 font-bold whitespace-nowrap">${formatDateRu(m.date)}</td>
+                        <td class="px-3 py-3 font-semibold tabular-nums">${m.weight} кг</td>
+                        <td class="px-3 py-3 tabular-nums">${m.fatKg} кг <span class="text-slate-400">(${m.fatPct}%)</span></td>
+                        <td class="px-3 py-3 font-semibold tabular-nums">${m.muscleKg} кг</td>
+                        <td class="px-3 py-3 tabular-nums">${m.visceral}</td>
+                        <td class="px-3 py-3 tabular-nums">${m.waterL} л</td>
+                        <td class="px-3 py-3 tabular-nums">${m.bmr} ккал</td>
+                        <td class="px-3 py-3 tabular-nums">${m.leftArm} / ${m.rightArm} кг</td>
+                        <td class="px-3 py-3 text-right">
+                          <button onclick="confirmDeleteInbody('${m.id}')" class="text-slate-400 hover:text-rose-500 font-medium">Удалить</button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- Блок 3: Журнал кардио-тренировок -->
+          <section class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-soft dark:shadow-soft-dark">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 class="font-bold text-base text-slate-900 dark:text-white">Журнал кардио-тренировок</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Всего записей: ${state.cardioLogs.length}</p>
+              </div>
+              <button onclick="openAddCardioModal()" class="h-10 px-4 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs sm:text-sm font-semibold active:scale-95 transition">+ Записать кардио</button>
+            </div>
+
+            ${state.cardioLogs.length === 0 ? `
+              <div class="py-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Пока нет записей кардио. Добавьте первую тренировку!</p>
+              </div>
+            ` : `
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${state.cardioLogs.map(c => `
+                  <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60 flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-bold text-sm text-slate-900 dark:text-white">${escapeHtml(c.type)}</span>
+                        <span class="text-xs text-slate-400">${formatDateRu(c.date)}</span>
+                      </div>
+                      <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                        <span class="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">⏱ ${c.duration} мин</span>
+                        ${c.hr ? `<span class="px-2 py-0.5 rounded-lg bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300">❤️ ${c.hr} уд/мин</span>` : ''}
+                      </div>
+                      ${c.note ? `<p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">${escapeHtml(c.note)}</p>` : ''}
+                    </div>
+                    <button onclick="deleteCardioLog('${c.id}')" class="text-slate-400 hover:text-rose-500 p-1 shrink-0" title="Удалить">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </section>
+        </div>
+      `;
+    }
+
+    function renderInbodyDeltaCards(first, latest) {
+      const calcDelta = (valNow, valFirst, unit, goodDirection = 'down') => {
+        if (!first || first.id === latest.id) return `<span class="text-xs text-slate-400">Базовый замер</span>`;
+        const d = +(valNow - valFirst).toFixed(1);
+        if (d === 0) return `<span class="text-xs font-semibold text-slate-400">0 ${unit}</span>`;
+        const sign = d > 0 ? '+' : '';
+        const isGood = (goodDirection === 'down' && d < 0) || (goodDirection === 'up' && d > 0);
+        const cls = isGood
+          ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15'
+          : goodDirection === 'neutral'
+            ? 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800'
+            : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15';
+        return `<span class="inline-block px-2 py-0.5 rounded-lg text-[11px] font-bold tabular-nums ${cls}">${sign}${d} ${unit}</span>`;
+      };
+
+      const armDiff = +(latest.rightArm - latest.leftArm).toFixed(2);
+
+      const cards = [
+        { label: 'Вес', val: `${latest.weight} кг`, delta: calcDelta(latest.weight, first.weight, 'кг', 'down') },
+        { label: 'Жировая масса', val: `${latest.fatKg} кг`, sub: `${latest.fatPct}%`, delta: calcDelta(latest.fatKg, first.fatKg, 'кг', 'down') },
+        { label: 'Мышечная масса', val: `${latest.muscleKg} кг`, delta: calcDelta(latest.muscleKg, first.muscleKg, 'кг', 'up') },
+        { label: 'Висцеральный жир', val: `${latest.visceral}`, delta: calcDelta(latest.visceral, first.visceral, 'ур.', 'down') },
+        { label: 'Вода', val: `${latest.waterL} л`, delta: calcDelta(latest.waterL, first.waterL, 'л', 'neutral') },
+        { label: 'Основной обмен', val: `${latest.bmr} ккал`, delta: calcDelta(latest.bmr, first.bmr, 'ккал', 'neutral') },
+        { label: 'Баланс рук (Л / П)', val: `${latest.leftArm} / ${latest.rightArm} кг`, delta: `<span class="inline-block px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Δ ${Math.abs(armDiff)} кг</span>` }
+      ];
+
+      return `
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          ${cards.map(c => `
+            <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-700/60">
+              <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">${c.label}</div>
+              <div class="mt-1 flex items-baseline gap-1.5">
+                <span class="text-lg sm:text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">${c.val}</span>
+                ${c.sub ? `<span class="text-xs font-semibold text-slate-400">${c.sub}</span>` : ''}
+              </div>
+              <div class="mt-2">${c.delta}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderInbodyChart(data) {
+      const width = 640;
+      const height = 220;
+      const padL = 42;
+      const padR = 24;
+      const padT = 22;
+      const padB = 34;
+      const innerW = width - padL - padR;
+      const innerH = height - padT - padB;
+
+      const allVals = data.flatMap(d => [d.weight, d.muscleKg, d.fatKg]);
+      const minV = Math.floor(Math.min(...allVals) - 4);
+      const maxV = Math.ceil(Math.max(...allVals) + 4);
+      const range = Math.max(1, maxV - minV);
+
+      const xFor = i => padL + (data.length === 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
+      const yFor = v => padT + innerH - ((v - minV) / range) * innerH;
+
+      const makePath = key => data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)} ${yFor(d[key]).toFixed(1)}`).join(' ');
+
+      const series = [
+        { key: 'weight', name: 'Вес (кг)', color: '#6366f1' },
+        { key: 'muscleKg', name: 'Мышцы (кг)', color: '#10b981' },
+        { key: 'fatKg', name: 'Жир (кг)', color: '#f59e0b' }
+      ];
+
+      // Горизонтальная сетка
+      const gridLines = [0, 0.25, 0.5, 0.75, 1].map(t => {
+        const val = Math.round(minV + range * (1 - t));
+        const y = padT + innerH * t;
+        return `
+          <line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="currentColor" class="text-slate-200 dark:text-slate-800" stroke-dasharray="3 3" />
+          <text x="${padL - 8}" y="${y + 4}" text-anchor="end" class="fill-slate-400 text-[10px] font-medium">${val}</text>
+        `;
+      }).join('');
+
+      return `
+        <div class="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-200">График динамики (кг)</span>
+            <div class="flex items-center gap-3 text-xs font-medium">
+              ${series.map(s => `
+                <span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                  <span class="w-2.5 h-2.5 rounded-full" style="background:${s.color}"></span>
+                  ${s.name}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="w-full overflow-x-auto">
+            <svg viewBox="0 0 ${width} ${height}" class="w-full h-auto min-w-[320px]" role="img" aria-label="График InBody">
+              ${gridLines}
+              ${series.map(s => `
+                <path d="${makePath(s.key)}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                ${data.map((d, i) => `
+                  <circle cx="${xFor(i)}" cy="${yFor(d[s.key])}" r="4.5" fill="${s.color}" stroke="white" stroke-width="2" />
+                  <text x="${xFor(i)}" y="${yFor(d[s.key]) - 9}" text-anchor="middle" fill="${s.color}" class="text-[10.5px] font-bold">${d[s.key]}</text>
+                `).join('')}
+              `).join('')}
+              ${data.map((d, i) => `
+                <text x="${xFor(i)}" y="${height - 10}" text-anchor="middle" class="fill-slate-500 dark:fill-slate-400 text-[10.5px] font-semibold">${formatDateRu(d.date)}</text>
+              `).join('')}
+            </svg>
+          </div>
+        </div>
+      `;
+    }
+
+    function deleteCardioLog(id) {
+      state.cardioLogs = state.cardioLogs.filter(c => c.id !== id);
+      saveState();
+      renderMain();
+      showToast('Запись кардио удалена');
+    }
+
+    function confirmDeleteInbody(id) {
+      openConfirmModal(
+        'Удалить замер InBody?',
+        'Замер будет безвозвратно удалён из истории.',
+        'Удалить',
+        () => {
+          state.inbody = state.inbody.filter(m => m.id !== id);
+          saveState();
+          renderMain();
+          showToast('Замер удалён');
+        }
+      );
+    }
+
+    /* =========================================================================
+       7. МОДАЛЬНЫЕ ОКНА (БЕЗ ALERT/CONFIRM)
+       ========================================================================= */
+    function openModal(contentHtml) {
+      const root = document.getElementById('modal-root');
+      root.innerHTML = `
+        <div onclick="if(event.target === this) closeModal()" class="w-full h-full flex items-end sm:items-center justify-center">
+          <div class="w-full sm:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-modal">
+            ${contentHtml}
+          </div>
+        </div>
+      `;
+      root.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      const root = document.getElementById('modal-root');
+      root.classList.add('hidden');
+      root.innerHTML = '';
+      document.body.style.overflow = '';
+    }
+
+    function openConfirmModal(title, message, confirmLabel, onConfirm) {
+      window._pendingConfirmAction = () => {
+        closeModal();
+        onConfirm();
+      };
+      openModal(`
+        <div class="p-5 sm:p-6">
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white">${escapeHtml(title)}</h3>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(message)}</p>
+          <div class="mt-6 flex items-center justify-end gap-2.5">
+            <button onclick="closeModal()" class="h-11 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200">Отмена</button>
+            <button onclick="window._pendingConfirmAction()" class="h-11 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </div>
+      `);
+    }
+
+    /* Модалка: Редактировать/добавить упражнение */
+    function openExerciseModal(dayId, exId) {
+      const day = state.days.find(d => d.id === dayId);
+      const ex = exId ? day?.exercises.find(e => e.id === exId) : null;
+
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-base">${ex ? 'Редактировать упражнение' : 'Новое упражнение'}</h3>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
+        </div>
+        <form onsubmit="saveExerciseForm(event, '${dayId}', '${exId || ''}')" class="p-5 space-y-4 overflow-y-auto">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Название упражнения</label>
+            <input id="f-ex-name" type="text" required value="${escapeHtml(ex ? ex.name : '')}" placeholder="Например: Тяга верхнего блока" class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Подходы</label>
+              <input id="f-ex-sets" type="number" min="1" max="12" required value="${ex ? ex.targetSets : 3}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Повторения</label>
+              <input id="f-ex-reps" type="text" required value="${escapeHtml(ex ? ex.targetReps : '10–12')}" placeholder="10–12" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Отдых (сек)</label>
+              <input id="f-ex-rest" type="number" min="0" max="600" required value="${ex ? ex.restSec : 90}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Тип упражнения</label>
+              <select id="f-ex-type" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500">
+                <option value="strength" ${!ex || ex.type === 'strength' ? 'selected' : ''}>Силовое (Вес × Повт.)</option>
+                <option value="time" ${ex && ex.type === 'time' ? 'selected' : ''}>На время (сек / планка)</option>
+                <option value="cardio" ${ex && ex.type === 'cardio' ? 'selected' : ''}>Кардио / растяжка (мин)</option>
+              </select>
+            </div>
+            <div class="flex items-end pb-2">
+              <label class="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input id="f-ex-super" type="checkbox" ${ex && ex.isSuperset ? 'checked' : ''} class="w-5 h-5 rounded accent-indigo-600" />
+                <span>Часть суперсета</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Подсказка по технике</label>
+            <input id="f-ex-note" type="text" value="${escapeHtml(ex ? ex.note : '')}" placeholder="Например: сводить лопатки, пауза 1 сек" class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+          </div>
+
+          <div class="pt-2 flex items-center justify-between gap-2">
+            ${ex ? `<button type="button" onclick="closeModal(); confirmDeleteExercise('${dayId}', '${ex.id}')" class="h-11 px-4 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-sm font-semibold">Удалить</button>` : '<span></span>'}
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="closeModal()" class="h-11 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">Отмена</button>
+              <button type="submit" class="h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-glow-indigo">Сохранить</button>
+            </div>
+          </div>
+        </form>
+      `);
+    }
+
+    function saveExerciseForm(e, dayId, exId) {
+      e.preventDefault();
+      const day = state.days.find(d => d.id === dayId);
+      if (!day) return;
+
+      const name = document.getElementById('f-ex-name').value.trim();
+      const targetSets = Math.max(1, Number(document.getElementById('f-ex-sets').value) || 3);
+      const targetReps = document.getElementById('f-ex-reps').value.trim();
+      const restSec = Math.max(0, Number(document.getElementById('f-ex-rest').value) || 0);
+      const type = document.getElementById('f-ex-type').value;
+      const isSuperset = document.getElementById('f-ex-super').checked;
+      const note = document.getElementById('f-ex-note').value.trim();
+
+      if (exId) {
+        const ex = day.exercises.find(item => item.id === exId);
+        if (ex) {
+          ex.name = name;
+          ex.targetSets = targetSets;
+          ex.targetReps = targetReps;
+          ex.restSec = restSec;
+          ex.type = type;
+          ex.isSuperset = isSuperset;
+          ex.note = note;
+          while (ex.sets.length < targetSets) {
+            ex.sets.push({ id: generateId('set'), weight: '', reps: '', done: false });
+          }
+        }
+        showToast('Упражнение обновлено', 'success');
+      } else {
+        day.exercises.push({
+          id: generateId('ex'),
+          name,
+          targetSets,
+          targetReps,
+          restSec,
+          type,
+          isSuperset,
+          note,
+          sets: createDefaultSets(targetSets, type)
+        });
+        showToast('Упражнение добавлено', 'success');
+      }
+
+      saveState();
+      closeModal();
+      renderMain();
+    }
+
+    /* Модалка: Редактировать название и график дня */
+    function openEditDayModal(dayId) {
+      const day = state.days.find(d => d.id === dayId);
+      if (!day) return;
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-base">Настройка дня</h3>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400">✕</button>
+        </div>
+        <form onsubmit="saveDayForm(event, '${dayId}')" class="p-5 space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">День недели (кратко)</label>
+              <input id="f-day-short" type="text" required maxlength="6" value="${escapeHtml(day.shortDay)}" placeholder="Вт" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Ярлык в меню</label>
+              <input id="f-day-label" type="text" required maxlength="12" value="${escapeHtml(day.shortLabel)}" placeholder="Верх" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Полное название</label>
+            <input id="f-day-title" type="text" required value="${escapeHtml(day.title)}" class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Подзаголовок</label>
+            <input id="f-day-sub" type="text" value="${escapeHtml(day.subtitle)}" class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+          </div>
+          <div class="pt-2 flex justify-end gap-2">
+            <button type="button" onclick="closeModal()" class="h-11 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">Отмена</button>
+            <button type="submit" class="h-11 px-5 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Сохранить</button>
+          </div>
+        </form>
+      `);
+    }
+
+    function saveDayForm(e, dayId) {
+      e.preventDefault();
+      const day = state.days.find(d => d.id === dayId);
+      if (!day) return;
+      day.shortDay = document.getElementById('f-day-short').value.trim();
+      day.shortLabel = document.getElementById('f-day-label').value.trim();
+      day.title = document.getElementById('f-day-title').value.trim();
+      day.subtitle = document.getElementById('f-day-sub').value.trim();
+      saveState();
+      closeModal();
+      renderNavigation();
+      renderMain();
+      showToast('Название дня обновлено', 'success');
+    }
+
+    /* Модалка: История тренировок по дню */
+    function openDayHistoryModal(dayId) {
+      const day = state.days.find(d => d.id === dayId);
+      const sessions = state.workoutHistory.filter(s => s.dayId === dayId).reverse();
+
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-base">История: ${escapeHtml(day ? day.shortLabel : '')}</h3>
+            <p class="text-xs text-slate-500">Завершённых тренировок: ${sessions.length}</p>
+          </div>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400">✕</button>
+        </div>
+        <div class="p-5 space-y-3 overflow-y-auto">
+          ${sessions.length === 0 ? `
+            <p class="text-sm text-slate-500 text-center py-8">По этому дню ещё нет сохранённых тренировок. Выполните подходы и нажмите «Сохранить тренировку».</p>
+          ` : sessions.map(s => `
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-sm">${formatDateRu(s.date)}</span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">${s.completedSets} подх.</span>
+              </div>
+              <div class="space-y-1.5 text-xs">
+                ${Object.values(s.exercises).map(ex => `
+                  <div class="text-slate-600 dark:text-slate-300">
+                    <span class="font-semibold text-slate-800 dark:text-slate-100">${escapeHtml(ex.name)}:</span>
+                    ${ex.sets.map(st => ex.type === 'cardio' ? `${st.reps || '—'} мин` : `${st.weight || 0}×${st.reps || 0}`).join(', ')}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `);
+    }
+
+    /* Модалка: Редактировать КБЖУ и целевой вес */
+    function openEditNutritionModal() {
+      const n = state.nutrition;
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-base">Ориентиры по питанию</h3>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400">✕</button>
+        </div>
+        <form onsubmit="saveNutritionForm(event)" class="p-5 space-y-3.5 overflow-y-auto">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Этап / цель</label>
+            <input id="f-nut-goal" type="text" value="${escapeHtml(n.goalName)}" class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Калории</label>
+              <input id="f-nut-cal" type="text" value="${escapeHtml(n.calories)}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Целевой вес (кг)</label>
+              <input id="f-nut-tw" type="number" step="0.1" inputmode="decimal" value="${n.targetWeight}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Белок</label>
+              <input id="f-nut-p" type="text" value="${escapeHtml(n.protein)}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Жиры</label>
+              <input id="f-nut-f" type="text" value="${escapeHtml(n.fat)}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Углеводы</label>
+              <input id="f-nut-c" type="text" value="${escapeHtml(n.carbs)}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+          <div class="pt-2 flex justify-end gap-2">
+            <button type="button" onclick="closeModal()" class="h-11 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">Отмена</button>
+            <button type="submit" class="h-11 px-5 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Сохранить</button>
+          </div>
+        </form>
+      `);
+    }
+
+    function saveNutritionForm(e) {
+      e.preventDefault();
+      state.nutrition = {
+        goalName: document.getElementById('f-nut-goal').value.trim(),
+        calories: document.getElementById('f-nut-cal').value.trim(),
+        protein: document.getElementById('f-nut-p').value.trim(),
+        fat: document.getElementById('f-nut-f').value.trim(),
+        carbs: document.getElementById('f-nut-c').value.trim(),
+        targetWeight: Number(document.getElementById('f-nut-tw').value) || 78.7
+      };
+      saveState();
+      closeModal();
+      renderMain();
+      showToast('Ориентиры обновлены', 'success');
+    }
+
+    /* Модалка: Добавить новый замер InBody */
+    function openAddInbodyModal() {
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-base">Новый замер InBody</h3>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400">✕</button>
+        </div>
+        <form onsubmit="saveInbodyForm(event)" class="p-5 space-y-3.5 overflow-y-auto">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Дата замера</label>
+              <input id="f-inb-date" type="date" required value="${getTodayISO()}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Вес (кг)</label>
+              <input id="f-inb-weight" type="number" step="0.1" inputmode="decimal" required placeholder="91.0" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Жир (кг)</label>
+              <input id="f-inb-fatkg" type="number" step="0.1" inputmode="decimal" required placeholder="24.2" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Жир (%)</label>
+              <input id="f-inb-fatpct" type="number" step="0.1" inputmode="decimal" required placeholder="26.5" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Мышцы (кг)</label>
+              <input id="f-inb-muscle" type="number" step="0.1" inputmode="decimal" required placeholder="38.5" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Висцеральный жир</label>
+              <input id="f-inb-visc" type="number" inputmode="numeric" required placeholder="9" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Вода (л)</label>
+              <input id="f-inb-water" type="number" step="0.1" inputmode="decimal" required placeholder="49.0" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Основной обмен (ккал)</label>
+              <input id="f-inb-bmr" type="number" inputmode="numeric" required placeholder="1820" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Левая рука (кг)</label>
+              <input id="f-inb-la" type="number" step="0.1" inputmode="decimal" required placeholder="3.8" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Правая рука (кг)</label>
+              <input id="f-inb-ra" type="number" step="0.1" inputmode="decimal" required placeholder="3.9" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-end gap-2">
+            <button type="button" onclick="closeModal()" class="h-11 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">Отмена</button>
+            <button type="submit" class="h-11 px-5 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-glow-indigo">Добавить замер</button>
+          </div>
+        </form>
+      `);
+    }
+
+    function saveInbodyForm(e) {
+      e.preventDefault();
+      state.inbody.push({
+        id: generateId('inb'),
+        date: document.getElementById('f-inb-date').value,
+        weight: Number(document.getElementById('f-inb-weight').value),
+        fatKg: Number(document.getElementById('f-inb-fatkg').value),
+        fatPct: Number(document.getElementById('f-inb-fatpct').value),
+        muscleKg: Number(document.getElementById('f-inb-muscle').value),
+        visceral: Number(document.getElementById('f-inb-visc').value),
+        waterL: Number(document.getElementById('f-inb-water').value),
+        bmr: Number(document.getElementById('f-inb-bmr').value),
+        leftArm: Number(document.getElementById('f-inb-la').value),
+        rightArm: Number(document.getElementById('f-inb-ra').value)
+      });
+      saveState();
+      closeModal();
+      renderMain();
+      showToast('Новый замер InBody добавлен!', 'success');
+    }
+
+    /* Модалка: Добавить кардио */
+    function openAddCardioModal() {
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-base">Новая кардио-тренировка</h3>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400">✕</button>
+        </div>
+        <form onsubmit="saveCardioModalForm(event)" class="p-5 space-y-3.5">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Дата</label>
+              <input id="f-car-date" type="date" required value="${getTodayISO()}" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Вид кардио</label>
+              <select id="f-car-type" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500">
+                <option value="Ходьба в гору">Ходьба в гору</option>
+                <option value="Эллипс">Эллипс</option>
+                <option value="Гребля">Гребля</option>
+                <option value="Велотренажёр">Велотренажёр</option>
+                <option value="Другое">Другое</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Длительность (мин)</label>
+              <input id="f-car-dur" type="number" inputmode="numeric" required placeholder="45" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Средний пульс</label>
+              <input id="f-car-hr" type="number" inputmode="numeric" placeholder="132" class="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Заметка о самочувствии</label>
+            <input id="f-car-note" type="text" placeholder="Ровный темп, отличное самочувствие" class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium outline-none focus:border-indigo-500" />
+          </div>
+          <div class="pt-2 flex justify-end gap-2">
+            <button type="button" onclick="closeModal()" class="h-11 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">Отмена</button>
+            <button type="submit" class="h-11 px-5 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Сохранить</button>
+          </div>
+        </form>
+      `);
+    }
+
+    function saveCardioModalForm(e) {
+      e.preventDefault();
+      state.cardioLogs.unshift({
+        id: generateId('cardio'),
+        date: document.getElementById('f-car-date').value,
+        type: document.getElementById('f-car-type').value,
+        duration: Number(document.getElementById('f-car-dur').value),
+        hr: document.getElementById('f-car-hr').value ? Number(document.getElementById('f-car-hr').value) : null,
+        note: document.getElementById('f-car-note').value.trim()
+      });
+      saveState();
+      closeModal();
+      renderMain();
+      showToast('Кардио-тренировка добавлена!', 'success');
+    }
+
+    /* Модалка: Настройки (Тема, Автотаймер, Экспорт/Импорт JSON, Сброс) */
+    function openSettingsModal() {
+      const t = state.settings.theme;
+      openModal(`
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 class="font-bold text-base">Настройки и данные</h3>
+          <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400">✕</button>
+        </div>
+        <div class="p-5 space-y-5 overflow-y-auto">
+          <!-- Тема оформления -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Тема оформления</label>
+            <div class="grid grid-cols-3 gap-2">
+              ${[
+                { id: 'system', label: 'Системная' },
+                { id: 'light', label: 'Светлая' },
+                { id: 'dark', label: 'Тёмная' }
+              ].map(opt => `
+                <button onclick="setTheme('${opt.id}'); openSettingsModal();" class="h-11 rounded-xl text-xs font-semibold border transition ${t === opt.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-glow-indigo' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'}">
+                  ${opt.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Поведение таймера -->
+          <div class="space-y-2.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">Таймер отдыха</label>
+            <label class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 cursor-pointer">
+              <span class="text-sm font-medium">Автозапуск после отметки подхода</span>
+              <input type="checkbox" ${state.settings.autoStartTimer ? 'checked' : ''} onchange="state.settings.autoStartTimer = this.checked; saveState();" class="w-5 h-5 accent-indigo-600 rounded" />
+            </label>
+            <label class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 cursor-pointer">
+              <span class="text-sm font-medium">Звук и вибрация по завершении</span>
+              <input type="checkbox" ${state.settings.soundEnabled ? 'checked' : ''} onchange="state.settings.soundEnabled = this.checked; saveState(); updateTimerUI();" class="w-5 h-5 accent-indigo-600 rounded" />
+            </label>
+          </div>
+
+          <!-- Экспорт и импорт JSON -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Перенос между устройствами (JSON)</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button onclick="exportJsonData()" class="h-11 px-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs sm:text-sm font-semibold active:scale-95 transition">⬇ Экспорт JSON</button>
+              <label class="h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold flex items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition">
+                <span>⬆ Импорт JSON</span>
+                <input type="file" accept="application/json,.json" onchange="importJsonData(event)" class="hidden" />
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1.5">Все данные сохраняются локально в браузере. Используйте JSON для резервной копии или переноса на ноутбук.</p>
+          </div>
+
+          <!-- Сброс к стартовым данным -->
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <button onclick="confirmResetAll()" class="w-full h-11 rounded-xl border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-xs sm:text-sm font-semibold transition">
+              Сбросить к стартовым данным по умолчанию
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    function exportJsonData() {
+      try {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fitlog-backup-${getTodayISO()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Резервная копия JSON скачана', 'success');
+      } catch (err) {
+        showToast('Не удалось экспортировать файл', 'error');
+      }
+    }
+
+    function importJsonData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed || !Array.isArray(parsed.days) || !parsed.nutrition || !Array.isArray(parsed.inbody)) {
+            throw new Error('Некорректная структура файла');
+          }
+          state = parsed;
+          saveState();
+          applyTheme();
+          renderNavigation();
+          renderMain();
+          closeModal();
+          showToast('Данные успешно импортированы!', 'success');
+        } catch (err) {
+          showToast('Ошибка импорта: неверный формат JSON', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function confirmResetAll() {
+      openConfirmModal(
+        'Сбросить все данные?',
+        'Вся история тренировок, кастомные упражнения и добавленные замеры будут заменены стартовой программой по умолчанию.',
+        'Сбросить всё',
+        () => {
+          state = createDefaultState();
+          saveState();
+          applyTheme();
+          renderNavigation();
+          renderMain();
+          showToast('Стартовые данные восстановлены');
+        }
+      );
+    }
+
+    /* =========================================================================
+       8. ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      applyTheme();
+      renderNavigation();
+      renderMain();
+      updateTimerUI();
+    });
+  </script>
+</body>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js');
+    });
+  }
+</script>
+</html>
