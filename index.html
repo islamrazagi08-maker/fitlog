@@ -1151,7 +1151,7 @@
   <div class="app-shell">
     <!-- Минималистичная шапка -->
     <header class="top-header">
-      <h1 class="brand">FitLog</h1>
+      <h1 class="brand" onclick="handleBrandTap()" style="user-select:none;">FitLog</h1>
       <div class="header-actions">
         <button class="icon-btn" onclick="openManualTimer()" aria-label="Таймер отдыха" title="Таймер отдыха">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -1242,7 +1242,8 @@
         activeDayId: 'day1',
         settings: {
           theme: 'system',
-          autoTimer: true
+          autoTimer: true,
+          isOwner: true
         },
         customPhotos: {},
         days: [
@@ -1540,6 +1541,7 @@
 
     function getCleanUserState() {
       const base = getDefaultState();
+      base.settings.isOwner = false;
       base.days.forEach((d, idx) => {
         d.short = `Д${idx + 1}`;
         d.note = idx === 3 ? 'Дополнительный день: можно переименовать или удалить в настройках.' : '';
@@ -1565,6 +1567,7 @@
       try {
         const params = new URLSearchParams(window.location.search);
         const isCleanLink = params.get('new') === '1';
+        const isOwnerLink = params.get('owner') === '1';
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) {
           if (isCleanLink) {
@@ -1576,9 +1579,29 @@
         const parsed = JSON.parse(raw);
         if (!parsed || !Array.isArray(parsed.days)) return isCleanLink ? getCleanUserState() : getDefaultState();
         if (!parsed.customPhotos) parsed.customPhotos = {};
+        if (!parsed.settings) parsed.settings = { theme: 'system', autoTimer: true, isOwner: true };
+        if (parsed.settings.isOwner === undefined) parsed.settings.isOwner = true;
+        if (isOwnerLink) {
+          parsed.settings.isOwner = true;
+          try { window.history.replaceState({}, '', window.location.pathname); } catch {}
+        }
         return parsed;
       } catch {
         return getDefaultState();
+      }
+    }
+
+    let _brandTaps = 0;
+    let _brandTapTimer = null;
+    function handleBrandTap() {
+      _brandTaps++;
+      clearTimeout(_brandTapTimer);
+      _brandTapTimer = setTimeout(() => { _brandTaps = 0; }, 1400);
+      if (_brandTaps >= 5) {
+        _brandTaps = 0;
+        state.settings.isOwner = !state.settings.isOwner;
+        saveState();
+        showToast(state.settings.isOwner ? 'Режим владельца включён' : 'Режим владельца скрыт');
       }
     }
 
@@ -3617,6 +3640,7 @@
 
     function openSettingsModal() {
       const t = state.settings.theme || 'system';
+      const isOwner = !!state.settings.isOwner;
       openModal(`
         <div class="sheet-handle"></div>
         <div class="sheet-head">
@@ -3646,13 +3670,6 @@
           </div>
 
           <div>
-            <span class="field-lbl">Поделиться с другом (без моих данных)</span>
-            <button class="secondary-btn" style="width:100%;justify-content:space-between;" onclick="copyShareCleanLink()">
-              <span>Скопировать чистую ссылку (?new=1)</span><span>↗</span>
-            </button>
-          </div>
-
-          <div>
             <span class="field-lbl">Отчёт для AI-тренера и резервная копия</span>
             <div class="form-stack" style="gap:8px;">
               <button class="secondary-btn" style="width:100%;justify-content:space-between;" onclick="openAICoachReportModal(30)">
@@ -3668,10 +3685,22 @@
             </div>
           </div>
 
-          <div class="form-grid-2">
-            <button class="secondary-btn" onclick="confirmCleanStart()">Чистый старт</button>
-            <button class="secondary-btn" style="color:var(--danger);background:var(--danger-soft);" onclick="confirmReset()">Сброс к моим</button>
-          </div>
+          ${isOwner ? `
+            <div>
+              <span class="field-lbl">Только для владельца</span>
+              <div class="form-stack" style="gap:8px;">
+                <button class="secondary-btn" style="width:100%;justify-content:space-between;" onclick="copyShareCleanLink()">
+                  <span>Поделиться с другом (чистая ссылка)</span><span>↗</span>
+                </button>
+                <div class="form-grid-2">
+                  <button class="secondary-btn" onclick="confirmCleanStart()">Чистый старт</button>
+                  <button class="secondary-btn" style="color:var(--danger);background:var(--danger-soft);" onclick="confirmReset()">Сброс к моим</button>
+                </div>
+              </div>
+            </div>
+          ` : `
+            <button class="secondary-btn" style="width:100%;color:var(--danger);background:var(--danger-soft);" onclick="confirmCleanStart()">Очистить все данные</button>
+          `}
         </div>
       `);
     }
